@@ -29,7 +29,7 @@ public class OllamaAiService implements AiService {
     private final boolean isThinkingModeEnabled;
     private final ThinkMode thinkingMode;
     private final long requestTimeoutSeconds;
-    private final String systemPrompt;
+    private String systemPrompt;
 
 
     public OllamaAiService() {
@@ -275,5 +275,19 @@ public class OllamaAiService implements AiService {
                     .withOptions(new OptionsBuilder().setTemperature(this.temperature).build())
                     .withModel(this.model).build();
         }
+    }
+
+    @Override
+    public void setSystemPrompt(String prompt) {
+        this.systemPrompt = prompt;
+        logger.info("Ollama temporary system prompt set");
+    }
+
+    @Override
+    public void resetSystemPrompt() {
+        String configuredPrompt = AiConfig.getProperty("ollama.system.prompt", "");
+        this.systemPrompt = (configuredPrompt != null && !configuredPrompt.isEmpty())
+                ? configuredPrompt : Constants.DEFAULT_JMETER_SYSTEM_PROMPT;
+        logger.info("Ollama system prompt reset to default");
     }
 }

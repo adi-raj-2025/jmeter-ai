@@ -21,4 +21,7 @@ public interface AiService {
     default Runnable generateStreamResponse(List<String> conversation, String model, Consumer<String> tokenConsumer, Runnable onComplete, Consumer<Exception> onError) {
         throw new UnsupportedOperationException("Streaming not implemented for " + getName());
     }
+
+    default void setSystemPrompt(String prompt) {}
+    default void resetSystemPrompt() {}
 }

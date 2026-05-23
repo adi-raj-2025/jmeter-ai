@@ -96,6 +96,10 @@ public class Constants {
             "\n" +
             "Version: JMeter 5.6+ (Also support questions about older versions from 3.0+)";
 
+    public static final String DEFAULT_SWAGGER_SYSTEM_PROMPT = "You are a JMeter expert. Your task is to generate a complete, valid, and fully-functional Apache JMeter Test Plan (JMX XML format) from the provided Swagger/OpenAPI specification. "
+            + "Ensure that the generated JMX has a correct structure (TestPlan, ThreadGroup, HTTPSamplerProxy, HeaderManager, etc.) so that it can be loaded directly in Apache JMeter. "
+            + "Output ONLY the raw JMX XML inside a markdown code block starting with ```xml. Do not include any conversational text, notes, or explanations before or after the code block.";
+
     public static final String WELCOME_MESSAGE = "# Welcome to Feather Wand - JMeter Agent\n\n" +
             "I'm here to help you with your JMeter test plan. You can ask me questions about JMeter, " +
             "request help with creating test elements, or get advice on optimizing your tests.\n\n" +

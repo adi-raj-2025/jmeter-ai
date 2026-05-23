@@ -31,7 +31,7 @@ public class DeepseekAiService implements AiService {
     private final boolean isAnthropicFormat;
     private final String baseUrl;
     private final int maxHistorySize;
-    private final String systemPrompt;
+    private String systemPrompt;
     private String model;
     private float temperature;
     private long maxTokens;
@@ -380,5 +380,19 @@ public class DeepseekAiService implements AiService {
             }
         }
         return clean;
+    }
+
+    @Override
+    public void setSystemPrompt(String prompt) {
+        this.systemPrompt = prompt;
+        log.info("DeepSeek temporary system prompt set");
+    }
+
+    @Override
+    public void resetSystemPrompt() {
+        String configuredPrompt = AiConfig.getProperty("deepseek.system.prompt", "");
+        this.systemPrompt = (configuredPrompt != null && !configuredPrompt.isEmpty())
+                ? configuredPrompt : Constants.DEFAULT_JMETER_SYSTEM_PROMPT;
+        log.info("DeepSeek system prompt reset to default");
     }
 }

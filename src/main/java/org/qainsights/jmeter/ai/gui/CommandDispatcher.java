@@ -265,4 +265,81 @@ public class CommandDispatcher {
         int spaceIndex = trimmed.indexOf(' ');
         return spaceIndex == -1 ? trimmed : trimmed.substring(0, spaceIndex);
     }
+
+    /**
+     * Dispatches the Swagger file contents for JMeter JMX generation.
+     * Sets the temporary Swagger system prompt on the active service, sends the request,
+     * and resets the system prompt back to default once the request completes or fails.
+     */
+    public void dispatchSwagger(String filename, String fileContent) {
+        log.info("Processing Swagger upload: {}", filename);
+        cb.appendUserMessage("You: Uploaded Swagger file " + filename + " (generating JMeter Test Plan...)");
+        
+        // Build the prompt containing the file content
+        String prompt = "Please generate a complete, valid Apache JMeter Test Plan (JMX XML) from the following Swagger/OpenAPI definition. "
+                + "Ensure that the generated JMX has a correct structure (TestPlan, ThreadGroup, HTTPSamplerProxy, HeaderManager, etc.) so that it can be loaded directly in Apache JMeter. "
+                + "Respond ONLY with the raw JMX XML inside a markdown code block starting with ```xml.\n\n"
+                + "Swagger Definition:\n"
+                + fileContent;
+
+        // Set the Swagger system prompt on the active service
+        String selectedModel = cb.getSelectedModel();
+        AiService activeService = cb.resolveAiService(selectedModel);
+        
+        String swaggerPrompt = AiConfig.getProperty("jmeter.ai.swagger.system.prompt", org.qainsights.jmeter.ai.utils.Constants.DEFAULT_SWAGGER_SYSTEM_PROMPT);
+        activeService.setSystemPrompt(swaggerPrompt);
+
+        // Add the prompt to the conversation history so that history-based services get the content
+        cb.addToConversationHistory(prompt);
+        cb.clearMessageField();
+        cb.appendLoadingIndicator();
+        cb.setInputEnabled(false);
+
+        if (AiConfig.isStreamingEnabled()) {
+            log.info("Processing Swagger as streaming AI request");
+            cb.showStopButton();
+
+            StringBuilder fullResponse = new StringBuilder();
+
+            Runnable cancelHandle = cb.getAiStreamResponse(prompt,
+                token -> {
+                    fullResponse.append(token);
+                    cb.appendStreamToken(token);
+                },
+                () -> {
+                    String response = fullResponse.toString();
+                    cb.onStreamComplete(response);
+                    cb.addToConversationHistory(response);
+                    activeService.resetSystemPrompt();
+                },
+                e -> {
+                    cb.onStreamError("Error getting AI stream response for Swagger", e,
+                        "Sorry, I encountered an error while processing the Swagger file. Please try again.");
+                    activeService.resetSystemPrompt();
+                }
+            );
+        } else {
+            log.info("Processing Swagger as regular AI request");
+            new SwingWorker<String, Void>() {
+                @Override
+                protected String doInBackground() throws Exception {
+                    return cb.getAiResponse(prompt);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        String response = get();
+                        cb.onWorkerSuccess(response);
+                        cb.addToConversationHistory(response);
+                    } catch (InterruptedException | ExecutionException e) {
+                        cb.onWorkerError("Error getting AI response for Swagger", e,
+                                "Sorry, I encountered an error while processing the Swagger file. Please try again.");
+                    } finally {
+                        activeService.resetSystemPrompt();
+                    }
+                }
+            }.execute();
+        }
+    }
 }

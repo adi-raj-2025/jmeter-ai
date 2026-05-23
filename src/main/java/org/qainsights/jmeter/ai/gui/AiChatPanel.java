@@ -363,11 +363,57 @@ public class AiChatPanel
         JPanel modelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         modelPanel.add(new JLabel("Model: "));
         modelPanel.add(modelSelector);
+
+        // Swagger upload button
+        JButton swaggerButton = createStyledButton("📄 Upload Swagger", 12);
+        swaggerButton.setToolTipText("Upload a Swagger/OpenAPI file to generate a JMeter JMX test plan");
+        swaggerButton.addActionListener(e -> handleSwaggerUpload());
+        modelPanel.add(swaggerButton);
+
         bottomPanel.add(modelPanel, BorderLayout.NORTH);
 
         bottomPanel.add(createNavigationPanel(), BorderLayout.CENTER);
         bottomPanel.add(createInputPanel(font), BorderLayout.SOUTH);
         return bottomPanel;
+    }
+
+    /**
+     * Opens a file chooser for Swagger/OpenAPI files and dispatches the content
+     * to the AI for JMeter JMX generation.
+     */
+    private void handleSwaggerUpload() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Select Swagger / OpenAPI File");
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Swagger / OpenAPI files (*.json, *.yaml, *.yml)", "json", "yaml", "yml"));
+        fileChooser.setAcceptAllFileFilterUsed(false);
+
+        int result = fileChooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        java.io.File selectedFile = fileChooser.getSelectedFile();
+        log.info("Swagger file selected: {}", selectedFile.getAbsolutePath());
+
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return new String(java.nio.file.Files.readAllBytes(selectedFile.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String content = get();
+                    commandDispatcher.dispatchSwagger(selectedFile.getName(), content);
+                } catch (Exception ex) {
+                    log.error("Error reading Swagger file", ex);
+                    appendRedMessage("Error reading Swagger file: " + ex.getMessage());
+                }
+            }
+        }.execute();
     }
 
     /**

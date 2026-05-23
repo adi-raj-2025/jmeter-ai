@@ -433,4 +433,23 @@ public class ClaudeService implements AiService {
     public String getName() {
         return "Anthropic Claude";
     }
+
+    @Override
+    public void setSystemPrompt(String prompt) {
+        this.systemPrompt = prompt;
+        this.systemPromptInitialized = false;
+        log.info("Claude temporary system prompt set");
+    }
+
+    @Override
+    public void resetSystemPrompt() {
+        try {
+            this.systemPrompt = AiConfig.getProperty("claude.system.prompt", Constants.DEFAULT_JMETER_SYSTEM_PROMPT);
+        } catch (Exception e) {
+            log.error("Error resetting system prompt, using default", e);
+            this.systemPrompt = Constants.DEFAULT_JMETER_SYSTEM_PROMPT;
+        }
+        this.systemPromptInitialized = false;
+        log.info("Claude system prompt reset to default");
+    }
 }

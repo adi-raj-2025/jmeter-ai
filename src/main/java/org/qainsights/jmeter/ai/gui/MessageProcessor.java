@@ -282,6 +282,10 @@ public class MessageProcessor {
             headerPanel.add(languageLabel, BorderLayout.WEST);
         }
 
+        // Create a panel for the copy and optional save button
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        buttonPanel.setBackground(getCodeBlockBackground());
+
         // Create a copy button
         JButton copyButton = new JButton("Copy");
         copyButton.setToolTipText("Copy code to clipboard");
@@ -307,9 +311,84 @@ public class MessageProcessor {
                 }
             }
         );
+        buttonPanel.add(copyButton);
 
-        // Add the copy button to the header
-        headerPanel.add(copyButton, BorderLayout.EAST);
+        // Render Load in JMeter button if the block is a JMeter Test Plan JMX
+        String lowerCode = code.toLowerCase();
+        if (lowerCode.contains("jmetertestplan") || 
+            lowerCode.contains("jmx") || 
+            (language != null && language.toLowerCase().contains("xml") && lowerCode.contains("testplan"))) {
+
+            JButton loadJmxButton = new JButton("Load in JMeter");
+            loadJmxButton.setToolTipText("Load this Test Plan directly into the JMeter GUI");
+            loadJmxButton.addActionListener(
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        int confirm = JOptionPane.showConfirmDialog(
+                            codePanel,
+                            "Loading this test plan will replace your current active JMeter test plan.\nDo you want to proceed?",
+                            "Load Test Plan",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.WARNING_MESSAGE
+                        );
+                        if (confirm != JOptionPane.YES_OPTION) {
+                            return;
+                        }
+
+                        // Create a temporary file to load the JMX
+                        java.io.File tempFile = null;
+                        try {
+                            tempFile = java.io.File.createTempFile("jmeter-temp", ".jmx");
+                            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+                                 java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(fos, java.nio.charset.StandardCharsets.UTF_8)) {
+                                writer.write(code);
+                            }
+
+                            // Load the tree using SaveService.loadTree(File)
+                            org.apache.jorphan.collections.HashTree tree = org.apache.jmeter.save.SaveService.loadTree(tempFile);
+
+                            org.apache.jmeter.gui.GuiPackage guiPackage = org.apache.jmeter.gui.GuiPackage.getInstance();
+                            if (guiPackage != null) {
+                                // Clear the existing test plan from the model to prevent appending duplicates
+                                guiPackage.clearTestPlan();
+
+                                // Add the new tree to the cleared model
+                                guiPackage.addSubTree(tree);
+
+                                // Refresh the tree model
+                                org.apache.jmeter.gui.tree.JMeterTreeModel newTreeModel = guiPackage.getTreeModel();
+                                org.apache.jmeter.gui.tree.JMeterTreeNode root = (org.apache.jmeter.gui.tree.JMeterTreeNode) newTreeModel.getRoot();
+                                newTreeModel.nodeStructureChanged(root);
+
+                                // Refresh the main frame
+                                guiPackage.getMainFrame().repaint();
+
+                                JOptionPane.showMessageDialog(codePanel, "Test Plan loaded successfully into the JMeter panel!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                            } else {
+                                JOptionPane.showMessageDialog(codePanel, "JMeter GUI is not active. Cannot load Test Plan.", "Error", JOptionPane.ERROR_MESSAGE);
+                            }
+                        } catch (Exception ex) {
+                            log.error("Error loading JMX into JMeter", ex);
+                            JOptionPane.showMessageDialog(
+                                codePanel,
+                                "Failed to load Test Plan into JMeter. Ensure the generated JMX XML is valid.\nError: " + ex.getMessage(),
+                                "Error",
+                                JOptionPane.ERROR_MESSAGE
+                            );
+                        } finally {
+                            if (tempFile != null && tempFile.exists()) {
+                                tempFile.delete();
+                            }
+                        }
+                    }
+                }
+            );
+            buttonPanel.add(loadJmxButton);
+        }
+
+        // Add the button panel to the header
+        headerPanel.add(buttonPanel, BorderLayout.EAST);
 
         // Add the header panel to the code panel
         codePanel.add(headerPanel, BorderLayout.NORTH);

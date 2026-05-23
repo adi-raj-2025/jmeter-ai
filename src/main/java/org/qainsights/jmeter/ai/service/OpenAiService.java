@@ -490,4 +490,23 @@ public class OpenAiService implements AiService {
     public String getName() {
         return "OpenAI";
     }
+
+    @Override
+    public void setSystemPrompt(String prompt) {
+        this.systemPrompt = prompt;
+        this.systemPromptInitialized = false;
+        log.info("OpenAI temporary system prompt set");
+    }
+
+    @Override
+    public void resetSystemPrompt() {
+        try {
+            this.systemPrompt = AiConfig.getProperty("openai.system.prompt", Constants.DEFAULT_JMETER_SYSTEM_PROMPT);
+        } catch (Exception e) {
+            log.error("Error resetting system prompt, using default", e);
+            this.systemPrompt = Constants.DEFAULT_JMETER_SYSTEM_PROMPT;
+        }
+        this.systemPromptInitialized = false;
+        log.info("OpenAI system prompt reset to default");
+    }
 }

@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 public class GoogleAiService implements AiService {
     private static final Logger log = LoggerFactory.getLogger(GoogleAiService.class);
     private final Client googleClient;
-    private final GenerateContentConfig generateContentConfig;
+    private GenerateContentConfig generateContentConfig;
     private final int maxHistorySize;
     private final boolean streamingEnabled;
     private String model;
@@ -214,5 +214,32 @@ public class GoogleAiService implements AiService {
             log.error("Error listing Google models", e);
         }
         return models;
+    }
+
+    @Override
+    public void setSystemPrompt(String prompt) {
+        this.generateContentConfig = GenerateContentConfig.builder()
+                .temperature(generateContentConfig.temperature().orElse(0.7f))
+                .maxOutputTokens(generateContentConfig.maxOutputTokens().orElse(4096))
+                .systemInstruction(Content.builder()
+                        .parts(List.of(Part.builder().text(prompt).build()))
+                        .build())
+                .build();
+        log.info("Google Gemini temporary system prompt set");
+    }
+
+    @Override
+    public void resetSystemPrompt() {
+        String configuredPrompt = AiConfig.getProperty("google.system.prompt", "");
+        String systemPrompt = (configuredPrompt != null && !configuredPrompt.isEmpty())
+                ? configuredPrompt : Constants.DEFAULT_JMETER_SYSTEM_PROMPT;
+        this.generateContentConfig = GenerateContentConfig.builder()
+                .temperature(generateContentConfig.temperature().orElse(0.7f))
+                .maxOutputTokens(generateContentConfig.maxOutputTokens().orElse(4096))
+                .systemInstruction(Content.builder()
+                        .parts(List.of(Part.builder().text(systemPrompt).build()))
+                        .build())
+                .build();
+        log.info("Google Gemini system prompt reset to default");
     }
 }
